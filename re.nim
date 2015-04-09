@@ -33,7 +33,7 @@ type Regex = nre.Regex
 
 const
   MaxSubpatterns* {.deprecated.} = 1000
-    ## This is obsolete. There is no limit on of subpatterns.
+    ## This is obsolete. There is no limit on the number of subpatterns.
 
 type
   RegexFlag* = enum     ## options for regular expressions
@@ -63,7 +63,15 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
       options.add t[1]
   if reStudy notin flags:
     options.add "<no_study>"
-  nre.re(s, options)
+  try:
+    return nre.re(s, options)
+  except nre.SyntaxError:
+    let e = nre.SyntaxError(getCurrentException())
+    raise newException(RegexError, e.msg & "\n" & e.pattern & "\n" &
+                                   repeat(' ', e.pos) & "^\n")
+  except nre.StudyError:
+    let e = nre.StudyError(getCurrentException())
+    raise newException(RegexError, "Study error: " & e.msg)
 
 
 template execute(f: expr, notFound: stmt): stmt {.immediate, dirty.} =
